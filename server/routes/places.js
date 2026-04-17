@@ -268,6 +268,10 @@ async function fetchPlaces(lat, lon, radius, osmTags) {
         lon: placeLon,
         type: el.tags.amenity || el.tags.leisure || el.tags.shop || el.tags.tourism || 'place',
         address: [el.tags['addr:street'], el.tags['addr:housenumber']].filter(Boolean).join(' ') || null,
+        links: {
+          kakao: `https://map.kakao.com/link/search/${encodeURIComponent(el.tags.name)}`,
+          naver: `https://map.naver.com/v5/search/${encodeURIComponent(el.tags.name)}`,
+        },
       };
     })
     .filter(p => p.lat && p.lon);

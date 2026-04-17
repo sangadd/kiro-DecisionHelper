@@ -15,6 +15,9 @@ yarn-error.log*
 dist/
 build/
 
+# 피드백 데이터 (런타임 생성)
+data/
+
 # OS 생성 파일
 .DS_Store
 Thumbs.db
