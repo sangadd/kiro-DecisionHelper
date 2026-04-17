@@ -3,7 +3,7 @@ const STORAGE_KEY_FORM    = 'ai-helper-form-state';
 const STORAGE_KEY_HISTORY = 'ai-helper-history';
 const HISTORY_MAX         = 10;
 
-// ===== DOM 참조 =====
+// ===== DOM =====
 const form            = document.getElementById('inputForm');
 const submitBtn       = document.getElementById('submitBtn');
 const btnText         = submitBtn.querySelector('.btn-text');
@@ -17,26 +17,26 @@ const historyPanel    = document.getElementById('historyPanel');
 const historyList     = document.getElementById('historyList');
 const historyClearBtn = document.getElementById('historyClearBtn');
 
-// ===== 상태 =====
-let leafletMap        = null;
-let userLocation      = null;
-let lastInput         = null;   // 마지막 요청 input
-let lastResult        = null;   // 피드백 전송용 마지막 추천 결과
-let excludedRecs      = [];     // 이미 받은 추천 목록 (중복 방지용)
+let leafletMap         = null;
+let userLocation       = null;
+let lastResult         = null;
+let lastInput          = null;
+let excludedRecs       = [];
 let mapAbortController = null;
 
 // ===== 초기화 =====
 restoreFormState();
 renderHistory();
-requestLocation();
 
 extraNote.addEventListener('input', () => {
   charCount.textContent = extraNote.value.length;
   saveFormState();
 });
 
-// 폼 변경 시 자동 저장
 form.addEventListener('change', saveFormState);
+
+// 페이지 로드 시 위치 요청 → 날씨 자동 감지
+requestLocation();
 
 // 배너 엔진 정보 동적 업데이트
 (async () => {
@@ -57,9 +57,20 @@ form.addEventListener('change', saveFormState);
 // ===== 폼 제출 =====
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const data = collectFormData();
-  if (!data) return;
-  excludedRecs = []; // 새 입력이면 제외 목록 초기화
+
+  const fd   = new FormData(form);
+  const data = {};
+  for (const [key, value] of fd.entries()) {
+    if (value) data[key] = value;
+  }
+
+  if (Object.keys(data).filter(k => k !== 'extra_note').length === 0) {
+    showError('최소 한 가지 항목은 선택해주세요');
+    return;
+  }
+
+  excludedRecs = [];
+  lastInput    = data;
   await requestRecommend(data);
 });
 
@@ -84,21 +95,7 @@ historyClearBtn.addEventListener('click', () => {
   renderHistory();
 });
 
-// ===== 핵심 함수 =====
-
-function collectFormData() {
-  const fd   = new FormData(form);
-  const data = {};
-  for (const [key, value] of fd.entries()) {
-    if (value) data[key] = value;
-  }
-  if (Object.keys(data).filter(k => k !== 'extra_note').length === 0) {
-    showError('최소 한 가지 항목은 선택해주세요');
-    return null;
-  }
-  return data;
-}
-
+// ===== 추천 요청 =====
 async function requestRecommend(data, isDifferent = false) {
   setLoading(true);
   hideCards();
@@ -117,7 +114,7 @@ async function requestRecommend(data, isDifferent = false) {
       return;
     }
 
-    // 이전 추천과 동일한 결과가 나오면 한 번 더 재시도
+    // 이전 추천과 동일하면 한 번 더 재시도
     if (isDifferent && excludedRecs.includes(json.data.recommendation)) {
       const retryInput = {
         ...data,
@@ -130,7 +127,6 @@ async function requestRecommend(data, isDifferent = false) {
       });
       const json2 = await res2.json();
       if (res2.ok && json2.success && !excludedRecs.includes(json2.data.recommendation)) {
-        lastInput = lastInput ?? data;
         excludedRecs.push(json2.data.recommendation);
         saveHistory(json2.data, lastInput);
         showResult(json2.data);
@@ -138,14 +134,13 @@ async function requestRecommend(data, isDifferent = false) {
       }
     }
 
-    if (!isDifferent) {
-      lastInput    = data;
-      excludedRecs = [json.data.recommendation];
-    } else {
+    if (isDifferent) {
       excludedRecs.push(json.data.recommendation);
+    } else {
+      excludedRecs = [json.data.recommendation];
     }
 
-    saveHistory(json.data, lastInput ?? data);
+    saveHistory(json.data, lastInput);
     showResult(json.data);
   } catch {
     showError('서버와 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
@@ -155,7 +150,6 @@ async function requestRecommend(data, isDifferent = false) {
 }
 
 // ===== 폼 상태 저장/복원 =====
-
 function saveFormState() {
   const fd    = new FormData(form);
   const state = {};
@@ -164,7 +158,7 @@ function saveFormState() {
   }
   try {
     localStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(state));
-  } catch { /* 스토리지 용량 초과 등 무시 */ }
+  } catch { /* 무시 */ }
 }
 
 function restoreFormState() {
@@ -173,26 +167,27 @@ function restoreFormState() {
     if (!raw) return;
     const state = JSON.parse(raw);
     for (const [key, value] of Object.entries(state)) {
+      if (key === 'weather') continue; // 날씨는 자동 감지가 채움
       const el = form.elements[key];
       if (!el) continue;
       el.value = value;
     }
     charCount.textContent = (state.extra_note || '').length;
-  } catch { /* 파싱 오류 무시 */ }
+  } catch { /* 무시 */ }
 }
 
-// ===== 히스토리 저장/렌더 =====
-
+// ===== 히스토리 =====
 function saveHistory(result, input) {
   try {
     const history = loadHistory();
-    const entry = {
+    const entry   = {
       id:             Date.now(),
       recommendation: result.recommendation,
       reason:         result.reason,
       keyword:        result.keyword,
       image_keyword:  result.image_keyword,
       alternatives:   result.alternatives,
+      place_keyword:  result.place_keyword,
       input,
       ts: new Date().toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
     };
@@ -206,17 +201,12 @@ function saveHistory(result, input) {
 function loadHistory() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORY) || '[]');
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 function renderHistory() {
   const history = loadHistory();
-  if (!history.length) {
-    historyPanel.hidden = true;
-    return;
-  }
+  if (!history.length) { historyPanel.hidden = true; return; }
   historyPanel.hidden = false;
   historyList.innerHTML = '';
   history.forEach(entry => {
@@ -238,7 +228,6 @@ function renderHistory() {
 }
 
 // ===== UI 헬퍼 =====
-
 function setLoading(loading) {
   submitBtn.disabled = loading;
   btnText.hidden     = loading;
@@ -258,7 +247,6 @@ function showResult({ recommendation, reason, alternatives, keyword, image_keywo
 
   resetFeedback();
 
-  // 대안 목록
   const list = document.getElementById('alternativesList');
   list.innerHTML = '';
   alternatives.forEach((alt, i) => {
@@ -268,10 +256,8 @@ function showResult({ recommendation, reason, alternatives, keyword, image_keywo
     list.appendChild(item);
   });
 
-  // 이미지
   loadImages(image_keyword || keyword || recommendation);
 
-  // 유튜브 링크
   const query  = encodeURIComponent((keyword || recommendation) + ' 추천');
   const ytLink = document.getElementById('youtubeLink');
   const ytText = document.getElementById('youtubeLinkText');
@@ -280,7 +266,6 @@ function showResult({ recommendation, reason, alternatives, keyword, image_keywo
 
   resultCard.hidden = false;
 
-  // 지도
   const mapKeyword = place_keyword || keyword || recommendation;
   if (userLocation) {
     loadMap(mapKeyword, recommendation, userLocation.lat, userLocation.lon);
@@ -301,7 +286,7 @@ function showError(message) {
 }
 
 // ===== 이미지 =====
-async function loadImages(kw) {
+async function loadImages(keyword) {
   const grid = document.getElementById('imageGrid');
   grid.innerHTML = '';
   for (let i = 0; i < 3; i++) {
@@ -310,7 +295,7 @@ async function loadImages(kw) {
     grid.appendChild(sk);
   }
   try {
-    const res  = await fetch(`/api/images?q=${encodeURIComponent(kw)}&count=3`);
+    const res  = await fetch(`/api/images?q=${encodeURIComponent(keyword)}&count=3`);
     const json = await res.json();
     grid.innerHTML = '';
     if (!json.success || !json.images.length) {
@@ -354,7 +339,7 @@ function requestLocation(callback) {
 // ===== 날씨 자동 감지 =====
 async function autoFillWeather(lat, lon) {
   const weatherSelect = document.querySelector('select[name="weather"]');
-  if (!weatherSelect || weatherSelect.value) return;
+  if (!weatherSelect || weatherSelect.value) return; // 이미 선택된 경우 덮어쓰지 않음
 
   try {
     const res  = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
@@ -428,6 +413,7 @@ async function loadMap(keyword, recommendation, lat, lon) {
   mapAbortController = new AbortController();
 
   setMapStatus('장소 검색 중...');
+
   try {
     const params = new URLSearchParams({ lat, lon, keyword: keyword || '', recommendation: recommendation || '', radius: 2000 });
     const res  = await fetch(`/api/places?${params}`, { signal: mapAbortController.signal });
@@ -443,8 +429,9 @@ async function loadMap(keyword, recommendation, lat, lon) {
     }
 
     document.getElementById('map').style.display = '';
-    renderMap(lat, lon, json.places);
+    renderMap(lat, lon, json.places, keyword);
     renderPlaceList(json.places);
+
     const count = json.places.length;
     setMapStatus(count > 0 ? `반경 2km 내 ${count}개 장소` : '주변에 관련 장소가 없어요');
   } catch (err) {
@@ -454,7 +441,7 @@ async function loadMap(keyword, recommendation, lat, lon) {
   }
 }
 
-function renderMap(lat, lon, places) {
+function renderMap(lat, lon, places, keyword) {
   const container = document.getElementById('map');
   if (leafletMap) { leafletMap.remove(); leafletMap = null; }
 
