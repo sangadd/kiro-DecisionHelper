@@ -17,7 +17,7 @@ router.post('/recommend', validateInput, async (req, res) => {
     const result = await engine.recommend(req.body);
     res.json({ success: true, data: result });
   } catch (err) {
-    // AI 엔진 실패 시 폴백
+    // AI 엔진 실패 시 rule 엔진으로 폴백
     if (engineName === 'ai') {
       console.warn('[Fallback] AI 엔진 오류, Rule_Based_Engine으로 전환:', err.message);
       try {
@@ -29,10 +29,18 @@ router.post('/recommend', validateInput, async (req, res) => {
     } else {
       console.error('[recommend] 오류:', err.message);
     }
-    res.status(500).json({
-      success: false,
-      error: { message: '서버 내부 오류가 발생했습니다' }
-    });
+
+    // 최후 방어선: 하드코딩된 기본 응답
+    const defaultResult = {
+      recommendation: '잠깐 스트레칭하고 물 한 잔 마시기',
+      reason: '잠시 몸을 움직이고 수분을 보충해보세요. 어떤 상황에서도 도움이 돼요.',
+      alternatives: ['5분 명상', '좋아하는 음악 듣기'],
+      keyword: 'stretching relaxation',
+      image_keyword: 'stretching yoga calm',
+      place_keyword: 'home'
+    };
+    console.warn('[recommend] 기본 응답 반환');
+    res.json({ success: true, data: defaultResult });
   }
 });
 

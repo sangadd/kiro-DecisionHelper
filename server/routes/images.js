@@ -4,7 +4,8 @@ const router = express.Router();
 // GET /api/images?q=cozy+cafe&count=3
 router.get('/', async (req, res) => {
   const query = req.query.q || 'lifestyle';
-  const count = Math.min(parseInt(req.query.count) || 3, 6);
+  const parsedCount = parseInt(req.query.count);
+  const count = Math.min(!isNaN(parsedCount) && parsedCount > 0 ? parsedCount : 3, 6);
   const accessKey = process.env.UNSPLASH_ACCESS_KEY;
 
   if (!accessKey) {
