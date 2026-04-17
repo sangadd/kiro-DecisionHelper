@@ -446,16 +446,6 @@
 
         <div class="divider"></div>
 
-        <!-- 피드백 -->
-        <div class="result-section feedback-section">
-          <span class="section-label">이 추천이 도움이 됐나요?</span>
-          <div class="feedback-btns">
-            <button id="feedbackLike" class="feedback-btn" onclick="sendFeedback('like')">👍 도움됐어요</button>
-            <button id="feedbackDislike" class="feedback-btn" onclick="sendFeedback('dislike')">👎 별로예요</button>
-          </div>
-          <p id="feedbackMsg" class="feedback-msg"></p>
-        </div>
-
         <div class="divider"></div>
 
         <!-- 주변 장소 지도 -->
@@ -466,6 +456,18 @@
           </div>
           <div id="map" class="map-container"></div>
           <div class="place-list" id="placeList"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 피드백 -->
+        <div class="result-section feedback-section">
+          <span class="section-label">이 추천이 도움이 됐나요?</span>
+          <div class="feedback-btns">
+            <button id="feedbackLike" class="feedback-btn" onclick="sendFeedback('like')">👍 도움됐어요</button>
+            <button id="feedbackDislike" class="feedback-btn" onclick="sendFeedback('dislike')">👎 별로예요</button>
+          </div>
+          <p id="feedbackMsg" class="feedback-msg"></p>
         </div>
 
         <div class="divider"></div>

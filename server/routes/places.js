@@ -176,6 +176,8 @@ router.get('/', async (req, res) => {
 
   const searchQuery = buildSearchQuery(keyword, recommendation);
 
+  console.log('[places] keyword:', keyword, '| recommendation:', recommendation, '| searchQuery:', searchQuery);
+
   // 집에서 하는 활동
   if (searchQuery === null) {
     return res.json({ success: true, places: [], home: true });
