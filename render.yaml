@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: ai-decision-helper
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: RECOMMENDATION_ENGINE
+        sync: false
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_API_BASE_URL
+        sync: false
+      - key: AI_MODEL
+        sync: false
+      - key: UNSPLASH_ACCESS_KEY
+        sync: false
+      - key: KAKAO_REST_API_KEY
+        sync: false
