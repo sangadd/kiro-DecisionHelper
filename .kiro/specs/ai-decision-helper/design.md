@@ -2,7 +2,7 @@
 
 ## 디자인 컨셉
 
-캐치테이블(CatchTable) 스타일을 참고한 프리미엄 다크 UI.
+프리미엄 다크 UI.
 - 딥 다크 배경 + 골드/앰버 포인트 컬러
 - 카드 기반 레이아웃, 부드러운 그림자와 테두리
 - 모바일 퍼스트, 심플하고 직관적인 UX
@@ -30,7 +30,7 @@
 
 ## 타이포그래피
 
-- 폰트: `Pretendard` (한국어 최적화) → fallback: `Apple SD Gothic Neo`, `sans-serif`
+- 폰트: `Pretendard` (CDN) → fallback: `Apple SD Gothic Neo`, `sans-serif`
 - 제목: 24px / weight 700
 - 서브타이틀: 14px / weight 400 / Text Secondary
 - 레이블: 12px / weight 500 / Text Secondary / letter-spacing 0.08em / uppercase
@@ -44,30 +44,38 @@
 ```
 ┌─────────────────────────────────────┐
 │           Header (로고 + 타이틀)      │
+│           AI 배너 (엔진 상태)         │
 ├─────────────────────────────────────┤
-│                                     │
 │   ┌─────────────────────────────┐   │
 │   │     Input Card              │   │
-│   │  ┌──────┐  ┌──────┐        │   │
-│   │  │피로도 │  │시간  │        │   │
-│   │  └──────┘  └──────┘        │   │
-│   │  ┌──────┐  ┌──────┐        │   │
-│   │  │날씨  │  │예산  │        │   │
-│   │  └──────┘  └──────┘        │   │
-│   │  ┌──────────────────┐      │   │
-│   │  │      기분         │      │   │
-│   │  └──────────────────┘      │   │
-│   │  [ 추천받기 버튼 ]           │   │
+│   │  섹션: 신체·컨디션           │   │
+│   │    피로도 / 수면 / 식사      │   │
+│   │  섹션: 감정·심리             │   │
+│   │    기분 / 스트레스           │   │
+│   │  섹션: 환경·상황             │   │
+│   │    날씨 / 시간 / 예산 / 동행 │   │
+│   │  섹션: 목적·원하는 것        │   │
+│   │    활동유형 / 장소선호       │   │
+│   │  섹션: 추가 입력 (textarea)  │   │
+│   │  [ AI 분석 시작 버튼 ]       │   │
 │   └─────────────────────────────┘   │
 │                                     │
 │   ┌─────────────────────────────┐   │
 │   │     Result Card (조건부)    │   │
-│   │  ✦ 추천 행동 (골드 강조)    │   │
-│   │  추천 이유 텍스트            │   │
+│   │  최적 추천 텍스트            │   │
+│   │  관련 이미지 (3장 그리드)    │   │
+│   │  분석 이유                   │   │
+│   │  관련 유튜브 링크            │   │
 │   │  ─────────────────          │   │
-│   │  대안 1 / 대안 2            │   │
+│   │  다른 선택지 (대안 2개)      │   │
+│   │  ─────────────────          │   │
+│   │  주변 추천 장소 (Leaflet 지도)│   │
+│   │  장소 목록                   │   │
 │   └─────────────────────────────┘   │
 │                                     │
+│   ┌─────────────────────────────┐   │
+│   │  Error Card (조건부)        │   │
+│   └─────────────────────────────┘   │
 └─────────────────────────────────────┘
 ```
 
@@ -78,72 +86,49 @@
 ## 컴포넌트 상세
 
 ### Header
-- 배경: `#0D0D0D`
-- 로고 아이콘: ✦ (골드 심볼)
-- 타이틀: "AI 결정 도우미" (24px, Text Primary)
-- 서브: "지금 당신에게 딱 맞는 행동을 추천해드려요" (14px, Text Secondary)
-- 하단 구분선: 1px solid Border
+- 로고 아이콘: ✦ (골드 SVG 심볼)
+- 타이틀: "AI 결정 도우미"
+- 서브: "지금 상태를 알려주시면 AI가 최적의 행동을 분석해드려요"
+
+### AI 배너
+- 엔진 상태 표시: "Groq AI · llama3-8b-8192 분석 준비 완료"
+- 좌측 점 인디케이터 (애니메이션)
 
 ### Input Card
-- 배경: `#1A1A1A`
-- border-radius: 16px
-- border: 1px solid `#2E2E2E`
-- padding: 24px
-- box-shadow: `0 4px 24px rgba(0,0,0,0.4)`
-
-#### 드롭다운 필드
-- 레이블: 12px uppercase letter-spacing, Text Secondary
-- select 박스:
-  - 배경: `#242424`
-  - border: 1px solid `#2E2E2E`
-  - border-radius: 10px
-  - padding: 12px 16px
-  - color: Text Primary
-  - 포커스 시: border-color `#C9A84C`, box-shadow `0 0 0 2px rgba(201,168,76,0.2)`
-- 그리드: 2열 (피로도/시간, 날씨/예산), 기분은 1열 전체
+- 입력 필드를 4개 섹션으로 그룹화:
+  1. 신체·컨디션: 피로도, 수면 상태, 식사 여부
+  2. 감정·심리: 기분, 스트레스
+  3. 환경·상황: 날씨, 여유 시간, 예산, 동행
+  4. 목적·원하는 것: 원하는 활동, 장소 선호
+- 자유 입력 textarea (extra_note): 최대 200자, 실시간 글자 수 표시
+- 드롭다운 그리드: 2열 배치
 
 #### 추천받기 버튼
-- 배경: `#C9A84C`
-- color: `#0D0D0D`
-- border-radius: 12px
-- padding: 14px
-- font-size: 15px / weight 600
-- width: 100%
-- 호버: `#E0BF6A`, transform: translateY(-1px)
-- 비활성(로딩): opacity 0.6, cursor not-allowed
-- 로딩 상태: 스피너 아이콘 + "분석 중..." 텍스트
+- 텍스트: "AI 분석 시작"
+- 로딩 상태: 스피너 + "분석 중..." 텍스트
+- 비활성 시: opacity 0.6, cursor not-allowed
 
 ### Result Card
-- 초기: 숨김 (display: none)
-- 표시 시: fade-in 애니메이션 (0.3s ease)
-- 배경: `#1A1A1A`
-- border: 1px solid `#C9A84C33`
-- border-radius: 16px
-- padding: 24px
+- 초기: hidden
+- 표시 조건: 추천 API 성공 응답 수신 시
+- 섹션 구성:
+  1. 최적 추천 (recommendation 텍스트)
+  2. 관련 이미지 (3열 그리드, 스켈레톤 로딩)
+  3. 분석 이유 (reason 텍스트)
+  4. 관련 유튜브 링크 (keyword 기반 검색 URL)
+  5. 다른 선택지 (alternatives 2개)
+  6. 주변 추천 장소 (Leaflet 지도 + 장소 목록)
 
-#### 추천 행동 섹션
-- 상단 레이블: "✦ 오늘의 추천" (12px, Gold, uppercase)
-- 추천 텍스트: 20px / weight 600 / Text Primary
-- 배경 블록: `#C9A84C0D` (골드 틴트), border-radius 10px, padding 16px
+### 지도 (Leaflet)
+- 타일: OpenStreetMap
+- 내 위치 마커: 골드 원형
+- 장소 마커: 흰색 원형 (골드 테두리)
+- 위치 권한 거부 시: 서울 시청(37.5665, 126.9780) fallback
+- 반경: 2km
 
-#### 추천 이유 섹션
-- 레이블: "추천 이유" (12px, Text Secondary, uppercase)
-- 본문: 14px / Text Secondary / line-height 1.7
-
-#### 구분선
-- 1px solid `#2E2E2E`
-
-#### 대안 섹션
-- 레이블: "다른 선택지" (12px, Text Secondary, uppercase)
-- 대안 아이템:
-  - 배경: `#242424`
-  - border-radius: 8px
-  - padding: 10px 14px
-  - 앞에 번호 뱃지 (골드 원형)
-
-### Error State
-- border-color: `#E05C5C33`
-- 에러 아이콘 + 메시지 텍스트 (Error 컬러)
+### Error Card
+- 초기: hidden
+- 표시 조건: API 오류 또는 클라이언트 검증 실패 시
 
 ---
 
@@ -153,15 +138,17 @@
 project/
 ├── server/
 │   ├── index.js              # Express 서버 진입점
+│   ├── selector.js           # Engine_Selector
 │   ├── routes/
-│   │   └── recommend.js      # POST /api/recommend, GET /api/health
+│   │   ├── recommend.js      # POST /api/recommend, GET /api/health
+│   │   ├── images.js         # GET /api/images (Unsplash 프록시)
+│   │   └── places.js         # GET /api/places (Overpass OSM 프록시)
 │   ├── engines/
-│   │   ├── interface.js      # Recommendation_Engine 인터페이스 정의
+│   │   ├── interface.js      # Recommendation_Engine 인터페이스 (JSDoc)
 │   │   ├── ruleEngine.js     # Rule_Based_Engine
 │   │   └── aiEngine.js       # AI_Based_Engine (Groq)
-│   ├── middleware/
-│   │   └── validator.js      # Input_Validator
-│   └── selector.js           # Engine_Selector
+│   └── middleware/
+│       └── validator.js      # Input_Validator
 ├── public/
 │   ├── index.html            # 메인 HTML
 │   ├── style.css             # 전체 스타일
@@ -180,24 +167,30 @@ project/
 사용자 접속
     │
     ▼
-Input Card 표시 (5개 드롭다운 기본값 없음)
+페이지 로드 시 위치 권한 미리 요청
     │
     ▼
-사용자가 5개 항목 선택
+Input Card 표시 (11개 드롭다운 + textarea)
     │
     ▼
-"추천받기" 클릭
+사용자가 항목 선택 (최소 1개 필수)
+    │
+    ▼
+"AI 분석 시작" 클릭
     │
     ├─ 버튼 비활성화 + "분석 중..." 표시
     │
     ▼
 POST /api/recommend
     │
-    ├─ 성공 → Result Card fade-in 표시
-    │         추천 행동 / 이유 / 대안 렌더링
+    ├─ 성공 → Result Card 표시
+    │         ├─ 추천/이유/대안 렌더링
+    │         ├─ GET /api/images (image_keyword)
+    │         ├─ 유튜브 링크 생성 (keyword)
+    │         └─ GET /api/places (위치 + keyword)
+    │              └─ Leaflet 지도 + 장소 목록 렌더링
     │
-    └─ 실패 → Error 메시지 표시
-              버튼 재활성화
+    └─ 실패 → Error Card 표시
 ```
 
 ---
