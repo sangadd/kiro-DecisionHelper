@@ -467,6 +467,27 @@
           <div id="map" class="map-container"></div>
           <div class="place-list" id="placeList"></div>
         </div>
+
+        <div class="divider"></div>
+
+        <!-- 재추천 버튼 -->
+        <div class="result-actions">
+          <button type="button" id="differentBtn" class="btn-action btn-different">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 4h10M2 7h7M2 10h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            다른 추천 원해요
+          </button>
+        </div>
+      </div>
+
+      <!-- 히스토리 패널 -->
+      <div class="history-panel" id="historyPanel" hidden>
+        <div class="history-header">
+          <span class="section-label" style="margin-bottom:0">이전 추천</span>
+          <button type="button" id="historyClearBtn" class="history-clear-btn">전체 삭제</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
       </div>
 
       <!-- Error Card -->

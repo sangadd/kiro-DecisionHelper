@@ -44,18 +44,35 @@ function buildContext(input) {
   return lines.join('\n');
 }
 
-async function recommend(input) {
-  const context = buildContext(input);
+/**
+ * 한자(CJK) 포함 여부 감지
+ */
+function containsCJK(text) {
+  return /[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]/.test(text);
+}
 
-  const hasNote = !!input.extra_note;
+/**
+ * 한자를 제거하고 앞뒤 공백 정리
+ */
+function stripCJK(text) {
+  return text.replace(/[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]+/g, '').replace(/\s{2,}/g, ' ').trim();
+}
 
-  const placeKeywordGuide = `- place_keyword는 지도에서 주변 장소를 검색할 단어. 아래 규칙을 따르세요:
+const PLACE_KEYWORD_GUIDE = `- place_keyword는 지도에서 주변 장소를 검색할 단어. 아래 규칙을 따르세요:
   1. 음식/식당 추천이면 → 구체적인 음식 종류를 한국어로 (예: 치킨, 삼겹살, 카페, 라멘, 피자, 초밥, 버거, 파스타, 국밥, 냉면, 떡볶이, 이자카야 등)
   2. 장소/활동 추천이면 → 아래 목록 중 하나:
      park, outdoor, nature, beach, gym, workout, running, hiking, cycling, swimming,
      museum, library, bookstore, cinema, theater, gallery, shopping, market, spa, meditation
   3. 집에서 하는 활동이면 → "home"
   (카테고리 단어인 "restaurant", "food", "bar" 대신 반드시 구체적인 음식명을 사용하세요)`;
+
+const LANG_RULE = `- 모든 한국어 텍스트(recommendation, reason, alternatives)는 반드시 순수 한국어(한글)와 영어만 사용하세요.
+- 한자(漢字), 일본어 가나, 중국어 간체·번체는 절대 사용하지 마세요.
+- 예를 들어 "疲勞", "休息", "運動" 같은 한자 표현 대신 반드시 "피로", "휴식", "운동"처럼 한글로 쓰세요.`;
+
+async function recommend(input) {
+  const context = buildContext(input);
+  const hasNote = !!input.extra_note;
 
   const prompt = hasNote
     ? `당신은 사용자의 요청을 분석해서 최적의 행동을 추천하는 AI 도우미입니다.
@@ -66,61 +83,53 @@ async function recommend(input) {
 [참고할 사용자 상태 — 위 요청과 함께 고려하세요]
 ${context.replace(`사용자 직접 입력: "${input.extra_note}"\n`, '').trim() || '(추가 정보 없음)'}
 
+[언어 규칙 — 반드시 준수]
+${LANG_RULE}
+
 [지침]
 - 사용자 요청에 직접적으로 답하는 추천을 하세요
 - 참고 상태(예산, 시간 등)가 있다면 함께 반영하세요
 - recommendation은 한국어로 15자 이내의 구체적인 답변
-- reason은 반드시 순수한 한국어로만 작성하세요 (한자, 일본어, 중국어 절대 사용 금지)
+- reason은 2~3문장, 친근한 말투, 사용자 요청 내용 구체적으로 언급
 - keyword는 유튜브 검색용 영어 단어 1~2개
 - image_keyword는 추천 장소/음식/활동을 잘 표현하는 영어 이미지 검색어
-<<<<<<< HEAD
-=======
-${placeKeywordGuide}
->>>>>>> 573e15302b1dfc5d0f4cdb34665f89a0e36d927d
+${PLACE_KEYWORD_GUIDE}
 
 반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {
-  "recommendation": "추천 (15자 이내)",
-  "reason": "추천 이유 (2~3문장, 친근한 말투, 사용자 요청 내용 구체적으로 언급)",
+  "recommendation": "추천 (15자 이내, 한글+영어만)",
+  "reason": "추천 이유 (한글+영어만, 한자 절대 금지)",
   "alternatives": ["대안1", "대안2"],
   "keyword": "유튜브 검색용 영어 키워드",
-<<<<<<< HEAD
-  "image_keyword": "장소/음식/활동 이미지 검색용 영어 키워드"
-=======
   "image_keyword": "장소/음식/활동 이미지 검색용 영어 키워드",
   "place_keyword": "위 규칙에 따른 키워드"
->>>>>>> 573e15302b1dfc5d0f4cdb34665f89a0e36d927d
 }`
     : `당신은 사용자의 현재 상태를 분석해서 최적의 행동을 추천하는 AI 도우미입니다.
 
 [사용자 현재 상태 - 모든 항목을 반드시 반영하세요]
 ${context}
 
+[언어 규칙 — 반드시 준수]
+${LANG_RULE}
+
 [중요 지침]
 - 위 모든 항목을 종합적으로 고려하여 추천하세요
 - 예산, 여유 시간, 날씨, 동행 조건에 맞지 않는 추천은 절대 하지 마세요
 - 추천 이유에서 입력한 상태들을 구체적으로 언급하세요
 - recommendation은 한국어로 15자 이내의 구체적인 행동으로 작성하세요
-- reason은 반드시 순수한 한국어로만 작성하세요 (한자, 일본어, 중국어 절대 사용 금지)
+- reason은 2~3문장, 친근한 말투, 입력한 상태 구체적으로 언급
 - keyword는 유튜브 검색용 영어 단어 1~2개
 - image_keyword는 추천 장소/공간을 잘 표현하는 영어 이미지 검색어 (예: "cozy cafe interior", "city park", "gym workout")
-<<<<<<< HEAD
-=======
-${placeKeywordGuide}
->>>>>>> 573e15302b1dfc5d0f4cdb34665f89a0e36d927d
+${PLACE_KEYWORD_GUIDE}
 
 반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {
-  "recommendation": "추천 행동 (15자 이내)",
-  "reason": "추천 이유 (2~3문장, 친근한 말투, 입력한 상태 구체적으로 언급)",
+  "recommendation": "추천 행동 (15자 이내, 한글+영어만)",
+  "reason": "추천 이유 (한글+영어만, 한자 절대 금지)",
   "alternatives": ["대안1", "대안2"],
   "keyword": "유튜브 검색용 영어 키워드",
-<<<<<<< HEAD
-  "image_keyword": "장소/공간 이미지 검색용 영어 키워드"
-=======
   "image_keyword": "장소/공간 이미지 검색용 영어 키워드",
   "place_keyword": "위 규칙에 따른 키워드"
->>>>>>> 573e15302b1dfc5d0f4cdb34665f89a0e36d927d
 }`;
 
   const response = await client.chat.completions.create({
@@ -142,12 +151,23 @@ ${placeKeywordGuide}
     throw new Error('AI 응답 형식이 올바르지 않습니다');
   }
 
+  // 한자가 포함된 경우 서버 측에서 제거 (안전망)
+  if (containsCJK(parsed.reason)) {
+    console.warn('[aiEngine] reason에 한자 감지 — 자동 제거');
+    parsed.reason = stripCJK(parsed.reason);
+  }
+  if (containsCJK(parsed.recommendation)) {
+    console.warn('[aiEngine] recommendation에 한자 감지 — 자동 제거');
+    parsed.recommendation = stripCJK(parsed.recommendation);
+  }
+
   return {
     recommendation: parsed.recommendation,
-    reason: parsed.reason,
-    alternatives: parsed.alternatives.slice(0, 2),
-    keyword: parsed.keyword || parsed.recommendation,
-    image_keyword: parsed.image_keyword || parsed.keyword || parsed.recommendation
+    reason:         parsed.reason,
+    alternatives:   parsed.alternatives.slice(0, 2),
+    keyword:        parsed.keyword        || parsed.recommendation,
+    image_keyword:  parsed.image_keyword  || parsed.keyword || parsed.recommendation,
+    place_keyword:  parsed.place_keyword  || null,
   };
 }
 
