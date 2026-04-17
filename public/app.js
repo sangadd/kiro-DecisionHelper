@@ -267,12 +267,22 @@ function showResult({ recommendation, reason, alternatives, keyword, image_keywo
   resultCard.hidden = false;
 
   const mapKeyword = place_keyword || keyword || recommendation;
-  if (userLocation) {
+  const note = extraNote.value.trim();
+  const locationFromNote = extractLocationFromNote(note);
+
+  if (locationFromNote) {
+    // extra_note에서 지역명 추출 → 좌표 변환 후 그 위치 기준 검색
+    resolveLocationAndLoadMap(locationFromNote, mapKeyword, recommendation);
+  } else if (userLocation) {
     loadMap(mapKeyword, recommendation, userLocation.lat, userLocation.lon);
   } else {
-    setMapStatus('위치 권한을 허용해주세요');
+    setMapStatus('위치 권한을 허용하거나 하고 싶은 말에 지역명을 입력해주세요');
     requestLocation(() => {
       if (userLocation) loadMap(mapKeyword, recommendation, userLocation.lat, userLocation.lon);
+      else {
+        document.getElementById('map').style.display = 'none';
+        document.getElementById('placeList').innerHTML = '<p class="map-empty">위치 정보가 없어요. 위치 권한을 허용하거나 지역명을 입력해주세요 📍</p>';
+      }
     });
   }
 
@@ -317,7 +327,7 @@ async function loadImages(keyword) {
 // ===== 위치 =====
 function requestLocation(callback) {
   if (!navigator.geolocation) {
-    setMapStatus('위치 서비스를 지원하지 않는 브라우저예요');
+    if (callback) callback();
     return;
   }
   navigator.geolocation.getCurrentPosition(
@@ -327,13 +337,34 @@ function requestLocation(callback) {
       if (callback) callback();
     },
     () => {
-      setMapStatus('위치 권한이 거부됐어요. 서울 기준으로 표시해요');
-      userLocation = { lat: 37.5665, lon: 126.9780 };
-      if (!callback) autoFillWeather(userLocation.lat, userLocation.lon);
+      // 위치 권한 거부 시 fallback 없이 null 유지
+      if (!callback) setMapStatus('위치 권한이 없어요. 위치를 허용하거나 하고 싶은 말에 지역명을 입력해주세요');
       if (callback) callback();
     },
     { timeout: 8000 }
   );
+}
+
+/**
+ * extra_note에서 지역명 추출
+ * "강남에서 치킨 먹고 싶어" → "강남"
+ */
+function extractLocationFromNote(note) {
+  if (!note) return null;
+  // 지역명 패턴: ~에서, ~근처, ~주변, ~에, 지역명 단독
+  const patterns = [
+    /([가-힣]{2,6}(?:구|동|시|군|읍|면|로|길|역|동네|근처|주변))/g,
+    /([가-힣]{2,5})에서/g,
+    /([가-힣]{2,5})(?:근처|주변|쪽|지역)/g,
+  ];
+  for (const pattern of patterns) {
+    const match = note.match(pattern);
+    if (match) {
+      // 가장 첫 번째 매칭 반환, 조사 제거
+      return match[0].replace(/에서$|근처$|주변$|쪽$|지역$/, '').trim();
+    }
+  }
+  return null;
 }
 
 // ===== 날씨 자동 감지 =====
@@ -404,6 +435,31 @@ async function sendFeedback(rating) {
     if (msg) msg.textContent = rating === 'like' ? '피드백 감사해요 😊' : '다음엔 더 잘 추천할게요 🙏';
   } catch {
     if (msg) msg.textContent = '피드백 전송에 실패했어요';
+  }
+}
+
+// ===== 지역명 → 좌표 변환 후 지도 로드 =====
+async function resolveLocationAndLoadMap(locationName, keyword, recommendation) {
+  setMapStatus(`"${locationName}" 위치 검색 중...`);
+  try {
+    const res  = await fetch(`/api/geocode?q=${encodeURIComponent(locationName)}`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      const { lat, lon, name } = json.data;
+      setMapStatus(`"${name}" 기준으로 검색합니다`);
+      loadMap(keyword, recommendation, lat, lon);
+    } else {
+      // 지역명 변환 실패 시 현재 위치로 폴백
+      if (userLocation) {
+        setMapStatus('지역을 찾지 못해 현재 위치로 검색합니다');
+        loadMap(keyword, recommendation, userLocation.lat, userLocation.lon);
+      } else {
+        setMapStatus('위치를 찾을 수 없어요');
+        document.getElementById('map').style.display = 'none';
+      }
+    }
+  } catch {
+    if (userLocation) loadMap(keyword, recommendation, userLocation.lat, userLocation.lon);
   }
 }
 

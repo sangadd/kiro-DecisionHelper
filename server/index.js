@@ -15,6 +15,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/images',   require('./routes/images'));
 app.use('/api/places',   require('./routes/places'));
 app.use('/api/weather',  require('./routes/weather'));
+app.use('/api/geocode',  require('./routes/geocode'));
 app.use('/api/feedback', require('./routes/feedback'));
 app.use('/api',          require('./routes/recommend'));
 
