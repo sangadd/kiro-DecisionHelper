@@ -31,6 +31,47 @@ const EN_TO_KO = {
   swimming: '수영장', meditation: '공원',
 };
 
+// 추천 문장에서 핵심 장소 키워드를 추출하는 패턴
+// "야외 산책 또는 러닝" → "공원", "카페에서 책 읽기" → "카페" 등
+const KEYWORD_PATTERNS = [
+  // 음식/식당 (구체적인 것 먼저)
+  { pattern: /치킨|후라이드|양념치킨/, keyword: '치킨' },
+  { pattern: /삼겹살|고기|구이|갈비/, keyword: '삼겹살' },
+  { pattern: /카페|커피|아메리카노|라떼/, keyword: '카페' },
+  { pattern: /라멘|라면/, keyword: '라멘' },
+  { pattern: /초밥|스시|일식/, keyword: '초밥' },
+  { pattern: /피자/, keyword: '피자' },
+  { pattern: /버거|햄버거/, keyword: '버거' },
+  { pattern: /파스타|이탈리안/, keyword: '파스타' },
+  { pattern: /국밥|순대|분식|떡볶이/, keyword: '분식' },
+  { pattern: /족발|보쌈/, keyword: '족발' },
+  { pattern: /냉면|국수|우동|쌀국수/, keyword: '국수' },
+  { pattern: /돈까스|돈가스/, keyword: '돈까스' },
+  { pattern: /스테이크/, keyword: '스테이크' },
+  { pattern: /짜장|짬뽕|중식/, keyword: '중국집' },
+  { pattern: /술|맥주|소주|포차|이자카야/, keyword: '술집' },
+  { pattern: /베이커리|빵/, keyword: '베이커리' },
+  { pattern: /디저트|케이크/, keyword: '디저트카페' },
+  { pattern: /식당|맛집|밥|점심|저녁|음식/, keyword: '음식점' },
+  // 활동/장소
+  { pattern: /헬스|헬스장|운동|피트니스/, keyword: '헬스장' },
+  { pattern: /수영|수영장/, keyword: '수영장' },
+  { pattern: /등산|산행/, keyword: '등산' },
+  { pattern: /자전거/, keyword: '자전거' },
+  { pattern: /산책|러닝|달리기|조깅|야외|공원|피크닉/, keyword: '공원' },
+  { pattern: /박물관/, keyword: '박물관' },
+  { pattern: /미술관|갤러리|전시/, keyword: '미술관' },
+  { pattern: /도서관/, keyword: '도서관' },
+  { pattern: /서점|책/, keyword: '서점' },
+  { pattern: /영화|영화관/, keyword: '영화관' },
+  { pattern: /공연|극장/, keyword: '공연장' },
+  { pattern: /쇼핑|쇼핑몰/, keyword: '쇼핑몰' },
+  { pattern: /마트|시장/, keyword: '마트' },
+  { pattern: /스파|마사지|사우나/, keyword: '스파' },
+  { pattern: /해변|바다/, keyword: '해변' },
+  { pattern: /보드게임|방탈출/, keyword: '보드게임카페' },
+];
+
 function buildSearchQuery(keyword, recommendation) {
   const texts = [keyword, recommendation].filter(Boolean);
 
@@ -40,12 +81,26 @@ function buildSearchQuery(keyword, recommendation) {
 
     // 집 활동 체크
     if (lower === 'home' || isHomeActivity(lower)) return null;
+  }
 
-    // 영어 키워드 → 한국어 변환
-    if (EN_TO_KO[lower]) return EN_TO_KO[lower];
+  // 1순위: keyword가 한국어 구체적 키워드면 그대로 사용
+  if (keyword) {
+    const kLower = keyword.toLowerCase().trim();
+    if (kLower !== 'home' && /[가-힣]/.test(keyword)) return keyword.trim();
+    if (EN_TO_KO[kLower]) return EN_TO_KO[kLower];
+  }
 
-    // 한국어 키워드는 그대로 사용 (치킨, 삼겹살, 카페 등)
-    if (/[가-힣]/.test(text)) return text.trim();
+  // 2순위: recommendation 문장에서 패턴 매칭으로 핵심 키워드 추출
+  if (recommendation) {
+    for (const { pattern, keyword: kw } of KEYWORD_PATTERNS) {
+      if (pattern.test(recommendation)) return kw;
+    }
+  }
+
+  // 3순위: keyword 영어 → 한국어 변환 (이미 위에서 처리됐지만 혹시 모를 경우)
+  if (keyword) {
+    const kLower = keyword.toLowerCase().trim();
+    if (EN_TO_KO[kLower]) return EN_TO_KO[kLower];
   }
 
   return null;
@@ -126,16 +181,18 @@ router.get('/', async (req, res) => {
     return res.json({ success: true, places: [], home: true });
   }
 
-  // 검색어를 추출하지 못한 경우 기본값
-  const finalQuery = searchQuery || '카페';
+  // 검색어 추출 실패 시 — 장소 없음으로 반환 (엉뚱한 기본값 방지)
+  if (!searchQuery) {
+    return res.json({ success: true, places: [], query: '' });
+  }
 
   try {
-    const places = await searchKakaoPlaces(finalQuery, lat, lon, radius);
+    const places = await searchKakaoPlaces(searchQuery, lat, lon, radius);
 
     res.json({
       success: true,
       places,
-      query: finalQuery,
+      query: searchQuery,
     });
   } catch (err) {
     console.error('[places] 카카오 API 오류:', err.message);

@@ -466,7 +466,9 @@ function renderMap(lat, lon, places, keyword) {
 
   if (places.length > 0) {
     const bounds = L.latLngBounds([[lat, lon], ...places.map(p => [p.lat, p.lon])]);
-    leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+    leafletMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+  } else {
+    leafletMap.setView([lat, lon], 15);
   }
 }
 
