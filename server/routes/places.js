@@ -3,8 +3,6 @@ const router = express.Router();
 
 // 추천 키워드 → Overpass OSM 태그 매핑
 const KEYWORD_TO_OSM = {
-<<<<<<< HEAD
-=======
   // 카페/음료
   'cafe':           '[amenity=cafe]',
   'coffee':         '[amenity=cafe]',
@@ -78,7 +76,6 @@ const KEYWORD_TO_OSM = {
   '소주':           '[amenity=bar],[amenity=pub]',
   '포차':           '[amenity=bar],[amenity=pub]',
   '이자카야':       '[amenity=bar],[amenity=restaurant]',
->>>>>>> 573e15302b1dfc5d0f4cdb34665f89a0e36d927d
   // 운동/야외
   'running':        '[leisure=track],[leisure=pitch],[highway=path]',
   'workout':        '[leisure=fitness_centre],[leisure=sports_centre]',
@@ -88,14 +85,6 @@ const KEYWORD_TO_OSM = {
   'park':           '[leisure=park],[leisure=garden]',
   'outdoor':        '[leisure=park],[leisure=nature_reserve]',
   'swimming':       '[leisure=swimming_pool],[leisure=water_park]',
-  // 카페/음식
-  'cafe':           '[amenity=cafe]',
-  'coffee':         '[amenity=cafe]',
-  'restaurant':     '[amenity=restaurant]',
-  'food':           '[amenity=restaurant],[amenity=food_court]',
-  'dining':         '[amenity=restaurant]',
-  'bar':            '[amenity=bar],[amenity=pub]',
-  'bakery':         '[shop=bakery],[amenity=cafe]',
   // 문화/실내
   'museum':         '[tourism=museum]',
   'library':        '[amenity=library]',
@@ -115,16 +104,7 @@ const KEYWORD_TO_OSM = {
   'default':        '[leisure=park]',
 };
 
-<<<<<<< HEAD
-function getOsmTags(keyword) {
-  if (!keyword) return KEYWORD_TO_OSM['default'];
-  const lower = keyword.toLowerCase();
-  for (const [key, tags] of Object.entries(KEYWORD_TO_OSM)) {
-    if (lower.includes(key)) return tags;
-  }
-=======
-// 구체적 음식 키워드 → OSM name 필터 검색용 (정규식 매칭)
-// [amenity=restaurant|fast_food][name~"키워드",i] 방식으로 상호명 직접 검색
+// 구체적 음식 키워드 → OSM name 필터 검색용
 const FOOD_NAME_KEYWORDS = [
   '치킨', '삼겹살', '갈비', '족발', '보쌈', '냉면', '국밥', '순대', '떡볶이',
   '분식', '돈까스', '스테이크', '파스타', '피자', '버거', '라면', '라멘',
@@ -146,10 +126,6 @@ function isHomeActivity(text) {
   return HOME_KEYWORDS.some(k => lower.includes(k));
 }
 
-/**
- * 텍스트에서 구체적 음식 키워드를 추출
- * @returns {string|null} 매칭된 키워드 또는 null
- */
 function extractFoodKeyword(texts) {
   for (const text of texts.filter(Boolean)) {
     const lower = text.toLowerCase();
@@ -169,7 +145,7 @@ function getOsmTags(keyword, recommendation, reason) {
     if (lower === 'home' || isHomeActivity(lower)) return null;
   }
 
-  // 1단계: 구체적 음식 키워드 → name 필터 검색 (가장 정확)
+  // 1단계: 구체적 음식 키워드 → name 필터 검색
   const foodKw = extractFoodKeyword([keyword, recommendation, reason]);
   if (foodKw) {
     return { nameFilter: foodKw, baseTags: '[amenity=restaurant],[amenity=fast_food]' };
@@ -195,7 +171,7 @@ function getOsmTags(keyword, recommendation, reason) {
     }
   }
 
-  // 3단계: reason — OSM 태그 매칭만 (집 활동 판단 제외)
+  // 3단계: reason — OSM 태그 매칭만
   if (reason) {
     const lower = reason.toLowerCase();
     const sortedKeys = Object.keys(KEYWORD_TO_OSM)
@@ -207,20 +183,14 @@ function getOsmTags(keyword, recommendation, reason) {
     }
   }
 
->>>>>>> 573e15302b1dfc5d0f4cdb34665f89a0e36d927d
   return KEYWORD_TO_OSM['default'];
 }
 
-/**
- * osmTags가 nameFilter 객체인 경우 name 필터 쿼리 생성,
- * 문자열인 경우 기존 방식으로 생성
- */
 function buildOverpassQuery(lat, lon, radius, osmTags) {
   // name 필터 방식 (구체적 음식 키워드)
   if (typeof osmTags === 'object' && osmTags.nameFilter) {
     const { nameFilter, baseTags } = osmTags;
     const tagList = baseTags.split(',').map(t => t.trim());
-    // name에 키워드가 포함된 식당/패스트푸드 검색
     const unions = tagList.map(tag => `
       node${tag}["name"~"${nameFilter}",i](around:${radius},${lat},${lon});
       way${tag}["name"~"${nameFilter}",i](around:${radius},${lat},${lon});
@@ -237,22 +207,14 @@ function buildOverpassQuery(lat, lon, radius, osmTags) {
   return `[out:json][timeout:10];(${unions});out center 10;`;
 }
 
-<<<<<<< HEAD
-// GET /api/places?lat=37.5&lon=127.0&keyword=cafe&radius=1500
-=======
 // GET /api/places?lat=37.5&lon=127.0&keyword=치킨&recommendation=치킨 먹기&reason=...&radius=2000
->>>>>>> 573e15302b1dfc5d0f4cdb34665f89a0e36d927d
 router.get('/', async (req, res) => {
-  const { lat, lon, keyword, radius = 2000 } = req.query;
+  const { lat, lon, keyword, recommendation, reason, radius = 2000 } = req.query;
 
   if (!lat || !lon) {
     return res.status(400).json({ success: false, error: '위치 정보가 필요합니다' });
   }
 
-<<<<<<< HEAD
-  const osmTags = getOsmTags(keyword);
-  const query = buildOverpassQuery(parseFloat(lat), parseFloat(lon), parseInt(radius), osmTags);
-=======
   const osmTags = getOsmTags(keyword, recommendation, reason);
 
   console.log('[places] 입력:', { keyword, recommendation: recommendation?.slice(0, 30), reason: reason?.slice(0, 40) });
@@ -262,7 +224,6 @@ router.get('/', async (req, res) => {
   if (osmTags === null) {
     return res.json({ success: true, places: [], keyword, home: true });
   }
->>>>>>> 573e15302b1dfc5d0f4cdb34665f89a0e36d927d
 
   try {
     let places = await fetchPlaces(lat, lon, radius, osmTags);

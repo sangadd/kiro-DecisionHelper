@@ -18,6 +18,22 @@ extraNote.addEventListener('input', () => {
 // 페이지 로드 시 위치 미리 요청
 requestLocation();
 
+// 배너 엔진 정보 동적 업데이트
+(async () => {
+  try {
+    const res = await fetch('/api/health');
+    const json = await res.json();
+    const banner = document.getElementById('aiBannerText');
+    if (json.engine === 'ai' && json.model) {
+      banner.textContent = `Groq AI · ${json.model} 분석 준비 완료`;
+    } else {
+      banner.textContent = 'Rule 기반 엔진 분석 준비 완료';
+    }
+  } catch {
+    document.getElementById('aiBannerText').textContent = '분석 준비 완료';
+  }
+})();
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
 

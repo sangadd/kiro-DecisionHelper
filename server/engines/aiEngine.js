@@ -6,7 +6,7 @@ const client = new OpenAI({
   timeout: 10000
 });
 
-const MODEL = process.env.AI_MODEL || 'llama3-8b-8192';
+const MODEL = process.env.AI_MODEL || 'llama-3.3-70b-versatile';
 
 const LABELS = {
   fatigue:       { very_low: '매우 낮음(완전 충전)', low: '낮음(상쾌함)', medium: '보통', high: '높음(지침)', very_high: '매우 높음(완전 방전)' },
