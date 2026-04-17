@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY;
 
   if (!accessKey) {
-    return res.status(503).json({ success: false, error: 'Unsplash API 키가 설정되지 않았습니다' });
+    return res.status(503).json({ success: false, error: { message: 'Unsplash API 키가 설정되지 않았습니다' } });
   }
 
   try {
@@ -31,10 +31,10 @@ router.get('/', async (req, res) => {
       credit_link: photo.user.links.html
     }));
 
-    res.json({ success: true, images });
+    res.json({ success: true, data: images });
   } catch (err) {
     console.error('[images] 오류:', err.message);
-    res.status(500).json({ success: false, error: '이미지를 불러오지 못했습니다' });
+    res.status(500).json({ success: false, error: { message: '이미지를 불러오지 못했습니다' } });
   }
 });
 

@@ -10,6 +10,23 @@ const charCount = document.getElementById('charCount');
 let leafletMap = null;
 let userLocation = null;
 
+// 엔진 정보 배너 업데이트
+(async () => {
+  try {
+    const res = await fetch('/api/health');
+    const json = await res.json();
+    const banner = document.getElementById('engineBanner');
+    if (json.engine === 'ai') {
+      const model = json.model || 'AI';
+      banner.textContent = `Groq AI · ${model} 분석 준비 완료`;
+    } else {
+      banner.textContent = '규칙 기반 엔진 · 분석 준비 완료';
+    }
+  } catch {
+    document.getElementById('engineBanner').textContent = '분석 엔진 준비 완료';
+  }
+})();
+
 // 글자 수 카운터
 extraNote.addEventListener('input', () => {
   charCount.textContent = extraNote.value.length;
@@ -27,9 +44,11 @@ form.addEventListener('submit', async (e) => {
     if (value) data[key] = value;
   }
 
-  // 최소 1개 이상 선택했는지만 체크
-  if (Object.keys(data).filter(k => k !== 'extra_note').length === 0) {
-    showError('최소 한 가지 항목은 선택해주세요');
+  // 최소 1개 이상 선택했는지만 체크 (extra_note 단독 입력도 허용)
+  const hasSelects = Object.keys(data).filter(k => k !== 'extra_note').length > 0;
+  const hasNote = !!data.extra_note;
+  if (!hasSelects && !hasNote) {
+    showError('최소 한 가지 항목을 선택하거나 하고 싶은 말을 입력해주세요');
     return;
   }
 
@@ -52,17 +71,13 @@ form.addEventListener('submit', async (e) => {
     }
 
     showResult(json.data);
-  } catch {
+  } catch (err) {
+    console.error('[fetch]', err.message);
     showError('서버와 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
   } finally {
     setLoading(false);
   }
 });
-
-function labelOf(field) {
-  const map = { fatigue: '피로도', mood: '기분', weather: '날씨', time: '여유 시간', budget: '예산' };
-  return map[field] || field;
-}
 
 function setLoading(loading) {
   submitBtn.disabled = loading;
@@ -75,7 +90,7 @@ function hideCards() {
   errorCard.hidden = true;
 }
 
-function showResult({ recommendation, reason, alternatives, keyword, image_keyword }) {
+function showResult({ recommendation, reason, alternatives, keyword, image_keyword, place_keyword }) {
   document.getElementById('recommendationText').textContent = recommendation;
   document.getElementById('reasonText').textContent = reason;
 
@@ -101,13 +116,14 @@ function showResult({ recommendation, reason, alternatives, keyword, image_keywo
 
   resultCard.hidden = false;
 
-  // 지도: 위치 있으면 바로, 없으면 요청
+  // 지도: place_keyword + recommendation + reason 모두 전달해서 최적 장소 검색
+  const mapKeyword = place_keyword || keyword || recommendation;
   if (userLocation) {
-    loadMap(keyword || recommendation, userLocation.lat, userLocation.lon);
+    loadMap(mapKeyword, recommendation, reason, userLocation.lat, userLocation.lon);
   } else {
     setMapStatus('위치 권한을 허용해주세요');
     requestLocation(() => {
-      if (userLocation) loadMap(keyword || recommendation, userLocation.lat, userLocation.lon);
+      if (userLocation) loadMap(mapKeyword, recommendation, reason, userLocation.lat, userLocation.lon);
     });
   }
 
@@ -131,12 +147,12 @@ async function loadImages(keyword) {
     const json = await res.json();
 
     grid.innerHTML = '';
-    if (!json.success || !json.images.length) {
+    if (!json.success || !json.data?.length) {
       grid.innerHTML = '<p style="font-size:12px;color:var(--text-muted);grid-column:1/-1">이미지를 불러오지 못했어요</p>';
       return;
     }
 
-    json.images.forEach(img => {
+    json.data.forEach(img => {
       const el = document.createElement('img');
       el.src = img.url;
       el.alt = img.alt;
@@ -174,23 +190,39 @@ function setMapStatus(msg) {
 }
 
 // ===== 지도 =====
-async function loadMap(keyword, lat, lon) {
+async function loadMap(keyword, recommendation, reason, lat, lon) {
   setMapStatus('장소 검색 중...');
 
   try {
-    const res = await fetch(`/api/places?lat=${lat}&lon=${lon}&keyword=${encodeURIComponent(keyword)}&radius=2000`);
+    const params = new URLSearchParams({
+      lat, lon,
+      keyword: keyword || '',
+      recommendation: recommendation || '',
+      reason: reason || '',
+      radius: 2000
+    });
+    const res = await fetch(`/api/places?${params}`);
     const json = await res.json();
 
     if (!json.success) throw new Error(json.error);
 
+    // 집에서 하는 활동 → 지도 숨김
+    if (json.home) {
+      setMapStatus('집에서 즐기는 활동이에요');
+      document.getElementById('map').style.display = 'none';
+      document.getElementById('placeList').innerHTML = '<p class="map-empty">집에서 할 수 있는 활동이라 주변 장소가 필요 없어요 🏠</p>';
+      return;
+    }
+
+    document.getElementById('map').style.display = '';
     renderMap(lat, lon, json.places, keyword);
     renderPlaceList(json.places);
 
     const count = json.places.length;
     setMapStatus(count > 0 ? `반경 2km 내 ${count}개 장소` : '주변에 관련 장소가 없어요');
   } catch (err) {
-    setMapStatus('장소 정보를 불러오지 못했어요');
     console.error('[map]', err.message);
+    setMapStatus('장소 정보를 불러오지 못했어요');
   }
 }
 

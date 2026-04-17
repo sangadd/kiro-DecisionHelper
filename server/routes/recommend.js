@@ -8,7 +8,11 @@ const { engine, name: engineName } = selectEngine();
 
 // GET /api/health
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', engine: engineName });
+  const data = { status: 'ok', engine: engineName };
+  if (engineName === 'ai') {
+    data.model = process.env.AI_MODEL || 'llama3-8b-8192';
+  }
+  res.json(data);
 });
 
 // POST /api/recommend
