@@ -378,7 +378,7 @@ function renderPlaceList(places) {
 
     const type = document.createElement('div');
     type.className = 'place-type';
-    type.textContent = place.type + (place.address ? ' · ' + place.address : '');
+    type.textContent = place.type + (place.address ? ' · ' + place.address : '') + (place.distance ? ' · ' + place.distance : '');
 
     // 지도 앱 딥링크 버튼
     const links = document.createElement('div');
