@@ -258,11 +258,11 @@ function showResult({ recommendation, reason, alternatives, keyword, image_keywo
 
   loadImages(image_keyword || keyword || recommendation);
 
-  const query  = encodeURIComponent((keyword || recommendation) + ' 추천');
+  const query  = encodeURIComponent((recommendation || keyword) + ' 추천');
   const ytLink = document.getElementById('youtubeLink');
   const ytText = document.getElementById('youtubeLinkText');
   ytLink.href  = `https://www.youtube.com/results?search_query=${query}`;
-  ytText.textContent = `"${keyword || recommendation}" 관련 유튜브 영상 보기`;
+  ytText.textContent = `"${recommendation || keyword}" 관련 유튜브 영상 보기`;
 
   resultCard.hidden = false;
 
